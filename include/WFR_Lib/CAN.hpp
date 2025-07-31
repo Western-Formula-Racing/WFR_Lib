@@ -7,8 +7,13 @@
 #include <map>
 #include "freertos/semphr.h"
 #include <tuple>
-
+#define TIMEOUT 2000
 namespace CAN{
+    typedef enum{
+                OK,
+                PARSE_ERROR,
+                SERIALIZATION_ERROR,    
+    }SIGNAL_ERROR;
     class Message{
         public:
             typedef enum{
@@ -19,25 +24,24 @@ namespace CAN{
             bool timed_out();
             virtual MESSAGE_ERROR parse(uint64_t* buffer);
             virtual MESSAGE_ERROR serialize(uint64_t* buffer);
-        private:
+            uint32_t id;
+        protected:
             uint64_t last_recieved;
         
     };
     template<class Type>
     class Signal{
         public:
-            typedef enum{
-                OK,
-                PARSE_ERROR,
-                SERIALIZATION_ERROR,    
-            }SIGNAL_ERROR;
-            virtual T get(); 
-            virtual SIGNAL_ERROR set(T value); 
-             
+        
+            Type get(); 
+            SIGNAL_ERROR set(Type value); 
+            Signal(float scale, float offset, uint64_t* last_recieved_p, Type default_value = 0); 
         private:
-            T value;
-            int scale;
-            int offset;
+            Type value;
+            float scale;
+            float offset;
+            uint64_t* last_recieved_p;
+            Type default_value;
     };
 
 }// CAN namespace
