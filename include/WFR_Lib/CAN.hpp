@@ -9,11 +9,23 @@
 #include <tuple>
 #define TIMEOUT 2000
 namespace CAN{
+
+    typedef enum{
+                OK,
+                ERROR,    
+    }CAN_ERROR;
+
     typedef enum{
                 OK,
                 PARSE_ERROR,
                 SERIALIZATION_ERROR,    
     }SIGNAL_ERROR;
+    struct CanFrame
+    {
+        uint32_t id;
+        uint8_t buffer[8];
+    };
+
     class Message{
         public:
             typedef enum{
@@ -44,10 +56,29 @@ namespace CAN{
             Type default_value;
     };
 
+
+
+
+    class BaseInterface
+    {
+        public:
+            
+            CAN_ERROR begin();
+            bool logging;
+            int restart_counter;
+        protected:
+            uint16_t txCallBackCounter; 
+            static void rx_task_wrapper(void *arg); // Wrapper function
+            static void tx_CallBack_wrapper(TimerHandle_t xTimer); // Wrapper function
+            void tx_CallBack(); // Non-static member function
+            void rx_task(); // Non-static member function
+            virtual CAN_ERROR rx_msg(CAN::CanFrame* can_frame); //each interface needs it's own implementation
+            virtual CAN_ERROR tx_msg(CAN::CanFrame* can_frame); //each interface needs it's own implementation 
+            static TaskHandle_t rxTaskHandle;
+            static TimerHandle_t timerHandle;
+            static SemaphoreHandle_t rx_sem;
+    };
+
+
 }// CAN namespace
-
-
-
-
-
 #endif
