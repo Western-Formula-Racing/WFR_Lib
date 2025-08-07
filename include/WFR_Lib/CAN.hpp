@@ -12,11 +12,12 @@ namespace CAN{
 
     typedef enum{
                 OK,
-                ERROR,    
+                ERROR,
+                TWAI_DRIVER_ERROR,    
     }CAN_ERROR;
 
     typedef enum{
-                OK,
+                SIGNAL_OK,
                 PARSE_ERROR,
                 SERIALIZATION_ERROR,    
     }SIGNAL_ERROR;
@@ -67,6 +68,7 @@ namespace CAN{
             bool logging;
             int restart_counter;
         protected:
+            virtual CAN_ERROR init();
             uint16_t txCallBackCounter; 
             static void rx_task_wrapper(void *arg); // Wrapper function
             static void tx_CallBack_wrapper(TimerHandle_t xTimer); // Wrapper function
@@ -79,6 +81,21 @@ namespace CAN{
             static SemaphoreHandle_t rx_sem;
     };
 
+    class TWAI_Interface: public BaseInterface
+    {
+        public:
+            TWAI_Interface(gpio_num_t CAN_Tx_Pin, gpio_num_t CAN_Rx_Pin, twai_mode_t twai_mode);
+        protected:
+            CAN_ERROR init();
+            CAN_ERROR rx_msg(CAN::CanFrame* can_frame);
+            CAN_ERROR tx_msg(CAN::CanFrame* can_frame);
+            const char* get_twai_error_state_text(twai_status_info_t* status);
+        private:
+            twai_handle_t twai_handle;
+            gpio_num_t CAN_Tx_Pin;
+            gpio_num_t CAN_Rx_Pin;
+            twai_mode_t twai_mode;
+    };
 
 }// CAN namespace
 #endif
