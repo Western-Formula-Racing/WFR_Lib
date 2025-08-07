@@ -3,17 +3,17 @@
 #include "esp_timer.h"
 
 static const char *TAG = "CAN"; // Used for ESP_LOGx commands. See ESP-IDF Documentation
-
+using namespace CAN;
 
 template<class Type>
-CAN::Signal<Type>::Signal(float scale, float offset, uint64_t* last_recieved_p, Type default_value): 
+Signal<Type>::Signal(float scale, float offset, uint64_t* last_recieved_p, Type default_value): 
 scale(scale), offset(offset), last_recieved_p(last_recieved_p), default_value(default_value)
 {
 }
 
 
 template<class Type>
-Type CAN::Signal<Type>::get(){
+Type Signal<Type>::get(){
     int64_t current_time = esp_timer_get_time()/1000;
     if((current_time - *last_recieved_p) >= TIMEOUT){
         return default_value;
@@ -22,7 +22,7 @@ Type CAN::Signal<Type>::get(){
 }
 
 template<class Type>
-CAN::SIGNAL_ERROR CAN::Signal<Type>::set(Type value){
+SIGNAL_ERROR Signal<Type>::set(Type value){
     value = value;
     return SIGNAL_ERROR::SIGNAL_OK;
 }
@@ -30,39 +30,39 @@ CAN::SIGNAL_ERROR CAN::Signal<Type>::set(Type value){
 
 
 //CAN Base Class Operations
-CAN::CAN_ERROR CAN::BaseInterface::begin()
+CAN_ERROR BaseInterface::begin()
 {
     init();
     rx_sem = xSemaphoreCreateBinary();
     rxTaskHandle = nullptr;
     xSemaphoreGive(rx_sem);
-    xTaskCreatePinnedToCore(CAN::BaseInterface::rx_task_wrapper, "CAN_rx", 4096, this, configMAX_PRIORITIES - 20, &CAN::BaseInterface::rxTaskHandle, 1);
-    return CAN::CAN_ERROR::OK;
+    xTaskCreatePinnedToCore(BaseInterface::rx_task_wrapper, "CAN_rx", 4096, this, configMAX_PRIORITIES - 20, &BaseInterface::rxTaskHandle, 1);
+    return CAN_ERROR::OK;
 }
 
-void CAN::BaseInterface::rx_task_wrapper(void *arg)
+void BaseInterface::rx_task_wrapper(void *arg)
 {
-    CAN::BaseInterface *instance = static_cast<CAN::BaseInterface *>(arg);
+    BaseInterface *instance = static_cast<BaseInterface *>(arg);
     instance->rx_task();
 }
 
-void CAN::BaseInterface::tx_CallBack_wrapper(TimerHandle_t xTimer)
+void BaseInterface::tx_CallBack_wrapper(TimerHandle_t xTimer)
 {
-    CAN::BaseInterface *instance = static_cast<CAN::BaseInterface *>(static_cast<void *>(xTimer));
+    BaseInterface *instance = static_cast<BaseInterface *>(static_cast<void *>(xTimer));
     instance->tx_CallBack();
 }
 
-void CAN::BaseInterface::rx_task()
+void BaseInterface::rx_task()
 {
     while (true)
     {
         // Try to take the semaphore without blocking
         if (xSemaphoreTake(rx_sem, 0) == pdTRUE)
         {
-            CAN::CanFrame rx_msg;
+            CanFrame rx_msg;
             
             
-            while (CAN::BaseInterface::rx_msg(&rx_msg) == CAN::OK)
+            while (BaseInterface::rx_msg(&rx_msg) == OK)
             {
                 //process message
             }
@@ -76,10 +76,10 @@ void CAN::BaseInterface::rx_task()
     }
 }
 
-void CAN::BaseInterface::tx_CallBack()
+void BaseInterface::tx_CallBack()
 {
     txCallBackCounter = (txCallBackCounter < 1000) ? txCallBackCounter + 1 : 0;
-    CAN::CanFrame rx_msg;
+    CanFrame rx_msg;
     // I don't believe in 1ms messages in 2025. nothing's that important
 
     // 10ms messages
@@ -103,12 +103,12 @@ void CAN::BaseInterface::tx_CallBack()
 
 //TWAI Interface Implementation
 
-CAN::TWAI_Interface::TWAI_Interface(gpio_num_t CAN_Tx_Pin, gpio_num_t CAN_Rx_Pin, twai_mode_t twai_mode): CAN_Tx_Pin(CAN_Tx_Pin), CAN_Rx_Pin(CAN_Rx_Pin), twai_mode(twai_mode)
+TWAI_Interface::TWAI_Interface(gpio_num_t CAN_Tx_Pin, gpio_num_t CAN_Rx_Pin, twai_mode_t twai_mode): CAN_Tx_Pin(CAN_Tx_Pin), CAN_Rx_Pin(CAN_Rx_Pin), twai_mode(twai_mode)
 {
     
 }
 
-CAN::CAN_ERROR CAN::TWAI_Interface::init()
+CAN_ERROR TWAI_Interface::init()
 {
     twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(CAN_Tx_Pin, CAN_Rx_Pin, twai_mode);
     g_config.rx_queue_len = 1000;
@@ -126,22 +126,22 @@ CAN::CAN_ERROR CAN::TWAI_Interface::init()
     else
     {
         ESP_LOGI(TAG, "Failed to install driver\n");
-        return CAN::CAN_ERROR::TWAI_DRIVER_ERROR;
+        return CAN_ERROR::TWAI_DRIVER_ERROR;
     }
     if (twai_start_v2(twai_handle) == ESP_OK)
     {
         ESP_LOGI(TAG, "Driver started\n");
-        return CAN::CAN_ERROR::OK;
+        return CAN_ERROR::OK;
     }
     else
     {
         ESP_LOGE(TAG, "Failed to start driver\n");
-        return CAN::CAN_ERROR::TWAI_DRIVER_ERROR;
+        return CAN_ERROR::TWAI_DRIVER_ERROR;
     }
 
 }
 
-const char* CAN::TWAI_Interface::get_twai_error_state_text(twai_status_info_t* status)
+const char* TWAI_Interface::get_twai_error_state_text(twai_status_info_t* status)
 {
     if (status->state == TWAI_STATE_STOPPED) return "Stopped";
     else if (status->state == TWAI_STATE_RUNNING) {
