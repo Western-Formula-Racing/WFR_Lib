@@ -12,6 +12,8 @@ namespace CAN{
 
     typedef enum{
                 OK,
+                RX_QUEUE_EMPTY,
+                TX_ERROR,
                 ERROR,
                 TWAI_DRIVER_ERROR,    
     }CAN_ERROR;
@@ -24,6 +26,8 @@ namespace CAN{
     struct CanFrame
     {
         uint32_t id;
+        uint8_t dlc;
+        uint32_t extd;
         uint8_t buffer[8];
     };
 
@@ -48,11 +52,13 @@ namespace CAN{
         
             Type get(); 
             SIGNAL_ERROR set(Type value); 
-            Signal(float scale, float offset, uint64_t* last_recieved_p, Type default_value = 0); 
+            Signal(uint8_t start_bit, uint8_t bit_length, float scale, float offset, uint64_t* last_recieved_p, Type default_value = 0); 
         private:
             Type value;
             float scale;
             float offset;
+            uint8_t start_bit;
+            uint8_t bit_length;
             uint64_t* last_recieved_p;
             Type default_value;
     };

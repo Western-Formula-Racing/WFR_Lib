@@ -6,8 +6,8 @@ static const char *TAG = "CAN"; // Used for ESP_LOGx commands. See ESP-IDF Docum
 using namespace CAN;
 
 template<class Type>
-Signal<Type>::Signal(float scale, float offset, uint64_t* last_recieved_p, Type default_value): 
-scale(scale), offset(offset), last_recieved_p(last_recieved_p), default_value(default_value)
+Signal<Type>::Signal(uint8_t start_bit, uint8_t bit_length, float scale, float offset, uint64_t* last_recieved_p, Type default_value): 
+start_bit(start_bit), bit_length(bit_length), scale(scale), offset(offset), last_recieved_p(last_recieved_p), default_value(default_value)
 {
 }
 
@@ -64,7 +64,7 @@ void BaseInterface::rx_task()
             
             while (BaseInterface::rx_msg(&rx_msg) == OK)
             {
-                //process message
+                
             }
             xSemaphoreGive(rx_sem);
         }
@@ -155,4 +155,42 @@ const char* TWAI_Interface::get_twai_error_state_text(twai_status_info_t* status
     } else {
         return "Unknown";
     }
+}
+
+CAN_ERROR TWAI_Interface::rx_msg(CAN::CanFrame* can_frame)
+{
+    twai_message_t rx_msg;
+    uint32_t twai_alerts;
+    twai_read_alerts_v2(twai_handle, &twai_alerts, 0);
+    if (twai_alerts & TWAI_ALERT_RX_QUEUE_FULL)
+    {
+        ESP_LOGW(TAG, "rx queue full: msg dropped");
+    }
+    if(twai_receive(&rx_msg, portMAX_DELAY) == ESP_OK){
+        can_frame->id = rx_msg.identifier;
+        can_frame->dlc = rx_msg.data_length_code;
+        can_frame->extd = rx_msg.extd;
+        for (int i = 0; i < rx_msg.data_length_code; i++)
+        {
+            can_frame->buffer[i] = rx_msg.data[i];
+        }
+        return OK;
+    }
+    return RX_QUEUE_EMPTY;
+}
+
+CAN_ERROR TWAI_Interface::tx_msg(CAN::CanFrame* can_frame)
+{
+    twai_message_t tx_msg;
+    tx_msg.identifier = can_frame->id;
+    tx_msg.data_length_code = can_frame->dlc;
+    tx_msg.extd = can_frame->extd;
+    for (int i = 0; i < tx_msg.data_length_code; i++){
+        tx_msg.data[i] = can_frame->buffer[i];
+    }
+    if (twai_transmit(&tx_msg, pdMS_TO_TICKS(1000)) != ESP_OK)
+    {
+        return TX_ERROR;
+    }
+    return OK;
 }
