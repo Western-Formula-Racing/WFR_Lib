@@ -1,31 +1,10 @@
 #include "WFR_Lib/CAN.hpp"
 #include <stdio.h>
-#include "esp_timer.h"
+
+#include "WFR_Lib/CAN_Config/CAN_Config.hpp"
 
 static const char *TAG = "CAN"; // Used for ESP_LOGx commands. See ESP-IDF Documentation
 using namespace CAN;
-
-template<class Type>
-Signal<Type>::Signal(uint8_t start_bit, uint8_t bit_length, float scale, float offset, uint64_t* last_recieved_p, Type default_value): 
-start_bit(start_bit), bit_length(bit_length), scale(scale), offset(offset), last_recieved_p(last_recieved_p), default_value(default_value)
-{
-}
-
-
-template<class Type>
-Type Signal<Type>::get(){
-    int64_t current_time = esp_timer_get_time()/1000;
-    if((current_time - *last_recieved_p) >= TIMEOUT){
-        return default_value;
-    }
-    return value;
-}
-
-template<class Type>
-SIGNAL_ERROR Signal<Type>::set(Type value){
-    value = value;
-    return SIGNAL_ERROR::SIGNAL_OK;
-}
 
 
 
@@ -36,7 +15,7 @@ CAN_ERROR BaseInterface::begin()
     rx_sem = xSemaphoreCreateBinary();
     rxTaskHandle = nullptr;
     xSemaphoreGive(rx_sem);
-    xTaskCreatePinnedToCore(BaseInterface::rx_task_wrapper, "CAN_rx", 4096, this, configMAX_PRIORITIES - 20, &BaseInterface::rxTaskHandle, 1);
+    xTaskCreatePinnedToCore(BaseInterface::rx_task_wrapper, "CAN_rx", 4096, this, configMAX_PRIORITIES - 20, &rxTaskHandle, 1);
     return CAN_ERROR::OK;
 }
 
@@ -62,8 +41,12 @@ void BaseInterface::rx_task()
             CanFrame rx_msg;
             
             
-            while (BaseInterface::rx_msg(&rx_msg) == OK)
+            while (this->rx_msg(&rx_msg) == OK)
             {
+                if (CAN_Rx_Map.find(rx_msg.id) != CAN_Rx_Map.end())
+                {
+                    CAN_Rx_Map[rx_msg.id]->parse(rx_msg.buffer);
+                }
                 
             }
             xSemaphoreGive(rx_sem);
