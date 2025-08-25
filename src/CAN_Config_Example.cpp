@@ -1,5 +1,6 @@
 #include "WFR_Lib/CAN.hpp"
-#include "WFR_Lib/CAN_Config/CAN_Config.hpp"
+//change this later
+#include "WFR_Lib/CAN_Config/CAN_Config_Example.hpp"
 static const char *TAG = "CAN_Config"; // Used for ESP_LOGx commands. See ESP-IDF Documentation
 
 M192_Command_Message* M192_Command_Message::instancePtr = nullptr;
