@@ -1,7 +1,7 @@
 #include "WFR_Lib/CAN.hpp"
 #include <stdio.h>
-
-#include "WFR_Lib/CAN_Config/CAN_Config.hpp"
+// change this later
+#include "WFR_Lib/CAN_Config/CAN_Config_Example.hpp"
 
 static const char *TAG = "CAN"; // Used for ESP_LOGx commands. See ESP-IDF Documentation
 using namespace CAN;
@@ -45,6 +45,7 @@ void BaseInterface::rx_task()
             {
                 if (CAN_Rx_Map.find(rx_msg.id) != CAN_Rx_Map.end())
                 {
+                    printf("address of message: 0x%08x\n", (uint) CAN_Rx_Map[rx_msg.id]);
                     CAN_Rx_Map[rx_msg.id]->parse(rx_msg.buffer);
                 }
                 
