@@ -58,9 +58,16 @@ namespace CAN{
                     return default_value;
                 }
                 return value;
-            }; 
-            SIGNAL_ERROR set(Type raw_value){
-                value = static_cast<Type>((raw_value*scale)+offset);
+            };
+            Type get_raw(){
+                return (value-offset)/scale;
+            };  
+            SIGNAL_ERROR set_from_raw(Type raw_val){
+                value = static_cast<Type>((raw_val*scale)+offset);
+                return SIGNAL_ERROR::SIGNAL_OK;
+            };
+            SIGNAL_ERROR set(Type val){
+                value = val;
                 return SIGNAL_ERROR::SIGNAL_OK;
             }; 
             Signal(uint8_t start_bit, uint8_t bit_length, float scale, float offset, uint64_t* last_recieved_p, Type default_value = 0): 
@@ -94,8 +101,8 @@ namespace CAN{
             static void tx_CallBack_wrapper(TimerHandle_t xTimer); // Wrapper function
             void tx_CallBack(); // Non-static member function
             void rx_task(); // Non-static member function
-            virtual CAN_ERROR rx_msg(CAN::CanFrame* can_frame) = 0; //each interface needs it's own implementation
-            virtual CAN_ERROR tx_msg(CAN::CanFrame* can_frame) = 0; //each interface needs it's own implementation 
+            virtual CAN_ERROR rx_message(CAN::CanFrame* can_frame) = 0; //each interface needs it's own implementation
+            virtual CAN_ERROR tx_message(CAN::CanFrame* can_frame) = 0; //each interface needs it's own implementation 
             TaskHandle_t rxTaskHandle;
             TimerHandle_t timerHandle;
             SemaphoreHandle_t rx_sem;
@@ -105,11 +112,11 @@ namespace CAN{
     {
         public:
             TWAI_Interface(gpio_num_t CAN_Tx_Pin, gpio_num_t CAN_Rx_Pin, twai_mode_t twai_mode);
+            const char* get_twai_error_state_text();
         protected:
             CAN_ERROR init();
-            CAN_ERROR rx_msg(CAN::CanFrame* can_frame) override;
-            CAN_ERROR tx_msg(CAN::CanFrame* can_frame) override;
-            const char* get_twai_error_state_text(twai_status_info_t* status);
+            CAN_ERROR rx_message(CAN::CanFrame* can_frame) override;
+            CAN_ERROR tx_message(CAN::CanFrame* can_frame) override;
         private:
             twai_handle_t twai_handle;
             gpio_num_t CAN_Tx_Pin;

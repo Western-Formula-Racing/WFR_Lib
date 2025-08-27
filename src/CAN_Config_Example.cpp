@@ -52,17 +52,26 @@ CAN::Message::MESSAGE_ERROR M192_Command_Message::parse(uint8_t buffer[])
 {
     last_recieved = esp_timer_get_time()/1000; //maybe not the best spot for this
     memcpy(&raw_signals, buffer, 8*sizeof(uint8_t));
-    VCU_INV_Torque_Command->set(static_cast<float>(raw_signals.VCU_INV_Torque_Command));
-    VCU_INV_Speed_Command->set(raw_signals.VCU_INV_Speed_Command);
-    VCU_INV_Direction_Command->set(raw_signals.VCU_INV_Direction_Command);
-    VCU_INV_Inverter_Enable->set(raw_signals.VCU_INV_Inverter_Enable);
-    VCU_INV_Inverter_Discharge->set(raw_signals.VCU_INV_Inverter_Discharge);
-    VCU_INV_Speed_Mode_Enable->set(raw_signals.VCU_INV_Speed_Mode_Enable);
-    VCU_INV_Torque_Limit_Command->set(raw_signals.VCU_INV_Torque_Limit_Command);
+    VCU_INV_Torque_Command->set_from_raw(static_cast<float>(raw_signals.VCU_INV_Torque_Command));
+    VCU_INV_Speed_Command->set_from_raw(raw_signals.VCU_INV_Speed_Command);
+    VCU_INV_Direction_Command->set_from_raw(raw_signals.VCU_INV_Direction_Command);
+    VCU_INV_Inverter_Enable->set_from_raw(raw_signals.VCU_INV_Inverter_Enable);
+    VCU_INV_Inverter_Discharge->set_from_raw(raw_signals.VCU_INV_Inverter_Discharge);
+    VCU_INV_Speed_Mode_Enable->set_from_raw(raw_signals.VCU_INV_Speed_Mode_Enable);
+    VCU_INV_Torque_Limit_Command->set_from_raw(raw_signals.VCU_INV_Torque_Limit_Command);
     return OK;
 }
 CAN::Message::MESSAGE_ERROR M192_Command_Message::serialize(uint8_t buffer[])
 {
+    //this needs some error checking
+    raw_signals.VCU_INV_Torque_Command = static_cast<int16_t>(VCU_INV_Torque_Command->get_raw());
+    raw_signals.VCU_INV_Speed_Command = static_cast<int16_t>(VCU_INV_Speed_Command->get_raw());
+    raw_signals.VCU_INV_Direction_Command = static_cast<uint8_t>(VCU_INV_Direction_Command->get_raw());
+    raw_signals.VCU_INV_Inverter_Enable = static_cast<uint8_t>(VCU_INV_Inverter_Enable->get_raw());
+    raw_signals.VCU_INV_Inverter_Enable = static_cast<uint8_t>(VCU_INV_Inverter_Enable->get_raw());
+    raw_signals.VCU_INV_Inverter_Discharge = static_cast<uint8_t>(VCU_INV_Inverter_Discharge->get_raw());
+    raw_signals.VCU_INV_Speed_Mode_Enable = static_cast<uint8_t>(VCU_INV_Speed_Mode_Enable->get_raw());
+    raw_signals.VCU_INV_Torque_Limit_Command = static_cast<int16_t>(VCU_INV_Torque_Limit_Command->get_raw());
     memcpy(buffer, &raw_signals, 8*sizeof(uint8_t));
     return OK;
 }

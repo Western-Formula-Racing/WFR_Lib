@@ -6,9 +6,7 @@
 static const char *TAG = "CAN"; // Used for ESP_LOGx commands. See ESP-IDF Documentation
 using namespace CAN;
 
-
-
-//CAN Base Class Operations
+// CAN Base Class Operations
 CAN_ERROR BaseInterface::begin()
 {
     init();
@@ -16,6 +14,18 @@ CAN_ERROR BaseInterface::begin()
     rxTaskHandle = nullptr;
     xSemaphoreGive(rx_sem);
     xTaskCreatePinnedToCore(BaseInterface::rx_task_wrapper, "CAN_rx", 4096, this, configMAX_PRIORITIES - 20, &rxTaskHandle, 1);
+    timerHandle = xTimerCreate("canTx", pdMS_TO_TICKS(10), pdTRUE, (void *)this, tx_CallBack_wrapper);
+    if (timerHandle == NULL)
+    {
+        ESP_LOGE(TAG, "failed to start CAN TxTimer\n");
+    }
+    else
+    {
+        if (xTimerStart(timerHandle, 0) != pdPASS)
+        {
+            ESP_LOGE(TAG, "failed to start CAN TxTimer\n");
+        }
+    }
     return CAN_ERROR::OK;
 }
 
@@ -27,7 +37,7 @@ void BaseInterface::rx_task_wrapper(void *arg)
 
 void BaseInterface::tx_CallBack_wrapper(TimerHandle_t xTimer)
 {
-    BaseInterface *instance = static_cast<BaseInterface *>(static_cast<void *>(xTimer));
+    BaseInterface *instance = static_cast<BaseInterface *>(pvTimerGetTimerID(xTimer));
     instance->tx_CallBack();
 }
 
@@ -39,15 +49,13 @@ void BaseInterface::rx_task()
         if (xSemaphoreTake(rx_sem, 0) == pdTRUE)
         {
             CanFrame rx_msg;
-            
-            
-            while (this->rx_msg(&rx_msg) == OK)
+
+            while (this->rx_message(&rx_msg) == OK)
             {
-                if (CAN_Rx_Map.find(rx_msg.id) != CAN_Rx_Map.end())
+                if (CAN_Rx_IDs.find(rx_msg.id) != CAN_Rx_IDs.end())
                 {
-                    CAN_Rx_Map[rx_msg.id]->parse(rx_msg.buffer);
+                    CAN_Map[rx_msg.id]->parse(rx_msg.buffer);
                 }
-                
             }
             xSemaphoreGive(rx_sem);
         }
@@ -62,33 +70,35 @@ void BaseInterface::rx_task()
 void BaseInterface::tx_CallBack()
 {
     txCallBackCounter = (txCallBackCounter < 1000) ? txCallBackCounter + 1 : 0;
-    CanFrame rx_msg;
+    CanFrame tx_msg;
     // I don't believe in 1ms messages in 2025. nothing's that important
 
     // 10ms messages
-
-    
-
+    for (const auto &id : CAN_Tx_10ms)
+        {
+            tx_msg.id = id;
+            tx_msg.dlc = 8;
+            tx_msg.extd = 0;
+            CAN_Map[id]->serialize(tx_msg.buffer);
+            this->tx_message(&tx_msg);
+        }
     // 100ms messages
     if (txCallBackCounter % 10 == 0)
     {
         //@todo needs an implementation before calling tx
     }
-    
+
     // 1000ms messages
     if (txCallBackCounter % 100 == 0)
     {
         //@todo needs an implementation before calling tx
     }
-
 }
 
+// TWAI Interface Implementation
 
-//TWAI Interface Implementation
-
-TWAI_Interface::TWAI_Interface(gpio_num_t CAN_Tx_Pin, gpio_num_t CAN_Rx_Pin, twai_mode_t twai_mode): CAN_Tx_Pin(CAN_Tx_Pin), CAN_Rx_Pin(CAN_Rx_Pin), twai_mode(twai_mode)
+TWAI_Interface::TWAI_Interface(gpio_num_t CAN_Tx_Pin, gpio_num_t CAN_Rx_Pin, twai_mode_t twai_mode) : CAN_Tx_Pin(CAN_Tx_Pin), CAN_Rx_Pin(CAN_Rx_Pin), twai_mode(twai_mode)
 {
-    
 }
 
 CAN_ERROR TWAI_Interface::init()
@@ -104,7 +114,6 @@ CAN_ERROR TWAI_Interface::init()
     if (twai_driver_install_v2(&g_config, &t_config, &f_config, &twai_handle) == ESP_OK)
     {
         ESP_LOGI(TAG, "Driver installed\n");
-        
     }
     else
     {
@@ -121,26 +130,37 @@ CAN_ERROR TWAI_Interface::init()
         ESP_LOGE(TAG, "Failed to start driver\n");
         return CAN_ERROR::TWAI_DRIVER_ERROR;
     }
-
 }
 
-const char* TWAI_Interface::get_twai_error_state_text(twai_status_info_t* status)
+const char *TWAI_Interface::get_twai_error_state_text()
 {
-    if (status->state == TWAI_STATE_STOPPED) return "Stopped";
-    else if (status->state == TWAI_STATE_RUNNING) {
-        if (status->tx_error_counter >= 128 || status->rx_error_counter >= 128) {
+    twai_status_info_t status;
+    esp_err_t ret = twai_get_status_info(&status);
+
+    if (status.state == TWAI_STATE_STOPPED)
+        return "Stopped";
+    else if (status.state == TWAI_STATE_RUNNING)
+    {
+        if (status.tx_error_counter >= 128 || status.rx_error_counter >= 128)
+        {
             return "Bus-Off or Error-Passive";
-        } else if (status->tx_error_counter > 0 || status->rx_error_counter > 0) {
+        }
+        else if (status.tx_error_counter > 0 || status.rx_error_counter > 0)
+        {
             return "Error-Active (with some errors)";
-        } else {
+        }
+        else
+        {
             return "Active (no errors)";
         }
-    } else {
+    }
+    else
+    {
         return "Unknown";
     }
 }
 
-CAN_ERROR TWAI_Interface::rx_msg(CAN::CanFrame* can_frame)
+CAN_ERROR TWAI_Interface::rx_message(CAN::CanFrame *can_frame)
 {
     twai_message_t rx_msg;
     uint32_t twai_alerts;
@@ -149,7 +169,8 @@ CAN_ERROR TWAI_Interface::rx_msg(CAN::CanFrame* can_frame)
     {
         ESP_LOGW(TAG, "rx queue full: msg dropped");
     }
-    if(twai_receive(&rx_msg, portMAX_DELAY) == ESP_OK){
+    if (twai_receive(&rx_msg, portMAX_DELAY) == ESP_OK)
+    {
         can_frame->id = rx_msg.identifier;
         can_frame->dlc = rx_msg.data_length_code;
         can_frame->extd = rx_msg.extd;
@@ -162,17 +183,22 @@ CAN_ERROR TWAI_Interface::rx_msg(CAN::CanFrame* can_frame)
     return RX_QUEUE_EMPTY;
 }
 
-CAN_ERROR TWAI_Interface::tx_msg(CAN::CanFrame* can_frame)
+CAN_ERROR TWAI_Interface::tx_message(CAN::CanFrame *can_frame)
 {
     twai_message_t tx_msg;
     tx_msg.identifier = can_frame->id;
     tx_msg.data_length_code = can_frame->dlc;
     tx_msg.extd = can_frame->extd;
-    for (int i = 0; i < tx_msg.data_length_code; i++){
+    // printf("tx message: %ld, [", tx_msg.identifier);
+    for (int i = 0; i < tx_msg.data_length_code; i++)
+    {
         tx_msg.data[i] = can_frame->buffer[i];
+        // printf("%d,",tx_msg.data[i]);
     }
+    // printf("]\n");
     if (twai_transmit(&tx_msg, pdMS_TO_TICKS(1000)) != ESP_OK)
     {
+        printf("errrrmmmmm tx no work\n");
         return TX_ERROR;
     }
     return OK;
