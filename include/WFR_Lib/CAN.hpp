@@ -59,8 +59,8 @@ namespace CAN{
                 }
                 return value;
             }; 
-            SIGNAL_ERROR set(Type value){
-                value = value;
+            SIGNAL_ERROR set(Type raw_value){
+                value = static_cast<Type>((raw_value*scale)+offset);
                 return SIGNAL_ERROR::SIGNAL_OK;
             }; 
             Signal(uint8_t start_bit, uint8_t bit_length, float scale, float offset, uint64_t* last_recieved_p, Type default_value = 0): 

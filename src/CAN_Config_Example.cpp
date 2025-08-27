@@ -8,13 +8,13 @@ SemaphoreHandle_t M192_Command_Message::mutex = xSemaphoreCreateMutex();
 
 M192_Command_Message::M192_Command_Message()
     : signals(
-        CAN::Signal<uint16_t>(0,16,0.1,0, &last_recieved),
-        CAN::Signal<uint16_t>(16,16,1,0, &last_recieved),
+        CAN::Signal<float>(0,16,0.1,0, &last_recieved),
+        CAN::Signal<float>(16,16,1,0, &last_recieved),
         CAN::Signal<bool>(32,1,1,0, &last_recieved),
         CAN::Signal<bool>(40,1,1,0, &last_recieved),
         CAN::Signal<bool>(41,1,1,0, &last_recieved),
         CAN::Signal<bool>(42,1,1,0, &last_recieved),
-        CAN::Signal<uint16_t>(48,16,0.1,0, &last_recieved)
+        CAN::Signal<float>(48,16,0.1,0, &last_recieved)
     )
 {
 
@@ -50,7 +50,15 @@ M192_Command_Message *M192_Command_Message::Get(){
 
 CAN::Message::MESSAGE_ERROR M192_Command_Message::parse(uint8_t buffer[])
 {
+    last_recieved = esp_timer_get_time()/1000; //maybe not the best spot for this
     memcpy(&raw_signals, buffer, 8*sizeof(uint8_t));
+    VCU_INV_Torque_Command->set(static_cast<float>(raw_signals.VCU_INV_Torque_Command));
+    VCU_INV_Speed_Command->set(raw_signals.VCU_INV_Speed_Command);
+    VCU_INV_Direction_Command->set(raw_signals.VCU_INV_Direction_Command);
+    VCU_INV_Inverter_Enable->set(raw_signals.VCU_INV_Inverter_Enable);
+    VCU_INV_Inverter_Discharge->set(raw_signals.VCU_INV_Inverter_Discharge);
+    VCU_INV_Speed_Mode_Enable->set(raw_signals.VCU_INV_Speed_Mode_Enable);
+    VCU_INV_Torque_Limit_Command->set(raw_signals.VCU_INV_Torque_Limit_Command);
     return OK;
 }
 CAN::Message::MESSAGE_ERROR M192_Command_Message::serialize(uint8_t buffer[])

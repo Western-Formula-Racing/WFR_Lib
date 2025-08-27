@@ -45,7 +45,6 @@ void BaseInterface::rx_task()
             {
                 if (CAN_Rx_Map.find(rx_msg.id) != CAN_Rx_Map.end())
                 {
-                    printf("address of message: 0x%08x\n", (uint) CAN_Rx_Map[rx_msg.id]);
                     CAN_Rx_Map[rx_msg.id]->parse(rx_msg.buffer);
                 }
                 

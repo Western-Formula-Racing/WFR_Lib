@@ -26,34 +26,34 @@ class M192_Command_Message: public CAN::Message{
         #pragma pack(1)
         struct
         {
-            uint16_t VCU_INV_Torque_Command;
-            uint16_t VCU_INV_Speed_Command;
+            int16_t VCU_INV_Torque_Command;
+            int16_t VCU_INV_Speed_Command;
             uint8_t VCU_INV_Direction_Command: 1;
-            uint8_t VCU_INV_Inverter_Enable: 1;
             uint8_t padding1: 7;
+            uint8_t VCU_INV_Inverter_Enable: 1;
             uint8_t VCU_INV_Inverter_Discharge: 1;
             uint8_t VCU_INV_Speed_Mode_Enable: 1;
             uint8_t padding2: 5;
-            uint16_t VCU_INV_Torque_Limit_Command; 
+            int16_t VCU_INV_Torque_Limit_Command; 
         }raw_signals;
 
         //access as individual elements:
-        CAN::Signal<uint16_t>* VCU_INV_Torque_Command;
-        CAN::Signal<uint16_t>* VCU_INV_Speed_Command;
+        CAN::Signal<float>* VCU_INV_Torque_Command;
+        CAN::Signal<float>* VCU_INV_Speed_Command;
         CAN::Signal<bool>* VCU_INV_Direction_Command;
         CAN::Signal<bool>* VCU_INV_Inverter_Enable;
         CAN::Signal<bool>* VCU_INV_Inverter_Discharge;
         CAN::Signal<bool>* VCU_INV_Speed_Mode_Enable;
-        CAN::Signal<uint16_t>* VCU_INV_Torque_Limit_Command;
+        CAN::Signal<float>* VCU_INV_Torque_Limit_Command;
 
         
-        std::tuple< CAN::Signal<uint16_t>,
-                    CAN::Signal<uint16_t>,
+        std::tuple< CAN::Signal<float>,
+                    CAN::Signal<float>,
                     CAN::Signal<bool>,
                     CAN::Signal<bool>,
                     CAN::Signal<bool>,
                     CAN::Signal<bool>,
-                    CAN::Signal<uint16_t>> signals;
+                    CAN::Signal<float>> signals;
 
     };
 

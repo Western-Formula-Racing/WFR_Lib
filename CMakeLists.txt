@@ -1,4 +1,4 @@
-idf_component_register(SRCS "./src/CAN.cpp" "./src/CAN_Config.cpp"
+idf_component_register(SRCS "./src/CAN.cpp" "./src/CAN_Config_Example.cpp"
                   INCLUDE_DIRS "./include"
                   REQUIRES "driver" "esp_timer")
 Include(FetchContent)
